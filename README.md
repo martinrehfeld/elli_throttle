@@ -23,15 +23,15 @@ like this:
 -export([start_link/0, identity_fun/1]).
 
 start_link() ->
-    ThrotteConfig = [
-                     {hourly_max  , 3600},   %% (default)
-                     {daily_max   , 86400},  %% (default)
-                     {identity_fun, fun my_elli_stuff:identity_fun/1}
-                    ],
+    ThrottleConfig = [
+                      {hourly_max  , 3600},   %% (default)
+                      {daily_max   , 86400},  %% (default)
+                      {identity_fun, fun my_elli_stuff:identity_fun/1}
+                     ],
 
     Config = [
               {mods, [
-                      {elli_throttle, ThrotteConfig},
+                      {elli_throttle, ThrottleConfig},
                       {elli_example_callback, []}
                      ]}
              ],
