@@ -12,8 +12,12 @@
 -export([handle/2, handle_event/3]).
 
 
-%% @todo: reject request with 403 if quota is exceeded
-handle(_Req, _Config) -> ignore.
+handle(Req, Config) ->
+    IdentityF = identity_fun(Config),
+    case elli_throttle_server:is_allowed(IdentityF(Req)) of
+        true  -> ignore;
+        false -> {403, <<"Rate Limit Exceeded">>}
+    end.
 
 
 handle_event(request_complete, [Req, _ResponseCode, _ResponseHeaders,

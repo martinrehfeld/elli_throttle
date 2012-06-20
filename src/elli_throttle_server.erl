@@ -2,7 +2,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/1, request/1, stats/0]).
+-export([start_link/1, is_allowed/1, request/1, stats/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -32,6 +32,10 @@ start_link(Config) ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [Config], []).
 
 
+is_allowed(Id) ->
+    gen_server:call(?MODULE, {is_allowed, Id}).
+
+
 request(Id) ->
     gen_server:cast(?MODULE, {request, Id}).
 
@@ -50,6 +54,13 @@ init([Config]) ->
                 daily_limit = daily_limit(Config)}}.
 
 
+handle_call({is_allowed, Id}, _From, #state{hourly_limit = HourlyLimit,
+                                            daily_limit = DailyLimit} = State) ->
+    {HourlyRequests, DailyRequests} = get_counters(Id),
+    Decision = HourlyRequests =< HourlyLimit andalso DailyRequests =< DailyLimit,
+    {reply, Decision, State};
+
+
 handle_call(stats, _From, State) ->
     Requests = lists:filter(fun ({{elli_throttle, _}, _}) ->
                                     true;
@@ -58,8 +69,8 @@ handle_call(stats, _From, State) ->
                             end, get()),
     {reply, {ok, Requests}, State};
 
-handle_call(_, _From, State) ->
-    {reply, ok, State}.
+handle_call(Msg, _From, State) ->
+    {reply, {error, {unsupported_call, Msg}}, State}.
 
 
 handle_cast({request, Id}, #state{startup_time = StartupTime} = State) ->
@@ -126,6 +137,17 @@ updated_daily(CurrentDay, TrackedDay, Count)
     {TrackedDay, Count + 1};
 updated_daily(CurrentDay, _TrackedDay, _Count) ->
     {CurrentDay, 1}.
+
+
+get_counters(Id) ->
+    case get({elli_throttle, Id}) of
+        undefined ->
+            {0, 0};
+
+        #counters{hourly_requests = HourlyRequests,
+                  daily_requests = DailyRequests} ->
+            {HourlyRequests, DailyRequests}
+    end.
 
 
 current_hour(StartupTime) ->

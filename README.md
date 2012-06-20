@@ -9,9 +9,8 @@ or throttle a service over all clients.
 
 ## Status
 
-This is still work in progress and as such vaporware.  This README is supposed
-to capture the future functionality. Get in touch if you would like to see
-additional use cases implemented.
+This is still work in progress with a very basic set of functionality. Get in
+touch if you would like to see additional use cases implemented.
 
 ## Usage
 
