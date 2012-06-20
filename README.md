@@ -24,8 +24,8 @@ like this:
 
 start_link() ->
     ThrottleConfig = [
-                      {hourly_max  , 3600},   %% (default)
-                      {daily_max   , 86400},  %% (default)
+                      {hourly_limit, 3600},   %% (default)
+                      {daily_limit , 86400},  %% (default)
                       {identity_fun, fun my_elli_stuff:identity_fun/1}
                      ],
 

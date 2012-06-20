@@ -2,14 +2,21 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, request/1]).
+-export([start_link/1, request/1, stats/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-define(DEFAULT_HOURLY_LIMIT, 3600).
+-define(DEFAULT_DAILY_LIMIT,  86400).
+-define(SECS_PER_HOUR,        3600).
+-define(SECS_PER_DAY,         86400).
 
--record(state,    {startup_time}).
+-record(state,    {startup_time,
+                   hourly_limit,
+                   daily_limit}).
+
 -record(counters, {hour,
                    hourly_requests,
                    day,
@@ -21,21 +28,35 @@
 %%%===================================================================
 
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Config) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Config], []).
 
 
 request(Id) ->
     gen_server:cast(?MODULE, {request, Id}).
 
 
+stats() ->
+    gen_server:call(?MODULE, stats).
+
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
 
-init([]) ->
-    {ok, #state{startup_time = current_timestamp()}}.
+init([Config]) ->
+    {ok, #state{startup_time = current_timestamp(),
+                hourly_limit = hourly_limit(Config),
+                daily_limit = daily_limit(Config)}}.
 
+
+handle_call(stats, _From, State) ->
+    Requests = lists:filter(fun ({{elli_throttle, _}, _}) ->
+                                    true;
+                                (_) ->
+                                    false
+                            end, get()),
+    {reply, {ok, Requests}, State};
 
 handle_call(_, _From, State) ->
     {reply, ok, State}.
@@ -65,6 +86,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+hourly_limit(Config) ->
+    proplists:get_value(hourly_limit, Config, ?DEFAULT_HOURLY_LIMIT).
+
+daily_limit(Config) ->
+    proplists:get_value(daily_limit, Config, ?DEFAULT_DAILY_LIMIT).
+
 
 update_counters(undefined, StartupTime) ->
     #counters{hour = current_hour(StartupTime),
@@ -100,8 +128,11 @@ updated_daily(CurrentDay, _TrackedDay, _Count) ->
     {CurrentDay, 1}.
 
 
-current_hour(StartupTime) -> (current_timestamp() - StartupTime) div 3600.
-current_day(StartupTime)  -> (current_timestamp() - StartupTime) div 86400.
+current_hour(StartupTime) ->
+    (current_timestamp() - StartupTime) div ?SECS_PER_HOUR.
+
+current_day(StartupTime) ->
+    (current_timestamp() - StartupTime) div ?SECS_PER_DAY.
 
 current_timestamp() ->
     {MegaSecs, Secs, _MicroSecs} = os:timestamp(),

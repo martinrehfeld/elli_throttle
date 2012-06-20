@@ -22,10 +22,10 @@ handle_event(request_complete, [Req, _ResponseCode, _ResponseHeaders,
     elli_throttle_server:request(IdentityF(Req)),
     ok;
 
-handle_event(elli_startup, [], _Config) ->
+handle_event(elli_startup, [], Config) ->
     case whereis(elli_throttle_server) of
         undefined ->
-            {ok, _Pid} = elli_throttle_server:start_link(),
+            {ok, _Pid} = elli_throttle_server:start_link(Config),
             ok;
         Pid when is_pid(Pid) ->
             ok
